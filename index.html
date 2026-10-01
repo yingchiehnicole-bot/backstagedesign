@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>訂單管理後台</title>
+  <meta name="description" content="Flexible Column Layout（FCL）三欄式後台資料管理介面：主清單、主詳情、子詳情，支援比例切換、全螢幕聚焦與跨裝置響應式。">
+  <link rel="stylesheet" href="css/fcl.css">
+</head>
+<body>
+  <header class="shell" role="banner">
+    <div class="shell__brand">
+      <span class="shell__logo" aria-hidden="true">▦</span>
+      <h1 class="shell__title">訂單管理後台</h1>
+      <span class="device-badge" id="device-badge" title="目前裝置斷點">桌面</span>
+    </div>
+
+    <div class="shell__controls" role="group" aria-label="版面配置">
+      <div class="seg" role="radiogroup" aria-label="雙欄比例" data-group="ratio2">
+        <span class="seg__label">雙欄</span>
+        <button type="button" role="radio" data-value="33-67">33 : 67</button>
+        <button type="button" role="radio" data-value="25-75">25 : 75</button>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="三欄比例" data-group="ratio3">
+        <span class="seg__label">三欄</span>
+        <button type="button" role="radio" data-value="25-50-25">25 : 50 : 25</button>
+        <button type="button" role="radio" data-value="33-33-33">33 : 33 : 33</button>
+      </div>
+      <button type="button" class="icon-btn" id="theme-toggle" aria-label="切換深淺色主題" title="切換深淺色主題">◐</button>
+    </div>
+  </header>
+
+  <main class="fcl" id="fcl" data-device="desktop">
+    <!-- 第一欄：Master Column -->
+    <section class="col" id="col-begin" data-col="begin" aria-label="訂單清單">
+      <header class="col__bar">
+        <div class="col__heading">
+          <h2 class="col__title">訂單</h2>
+          <span class="col__sub" id="master-count"></span>
+        </div>
+        <div class="col__actions">
+          <button type="button" class="icon-btn" data-action="fullscreen" data-target="begin" aria-label="全螢幕">⤢</button>
+        </div>
+      </header>
+      <div class="filterbar">
+        <label class="search">
+          <span class="visually-hidden">搜尋訂單</span>
+          <input type="search" id="search" placeholder="搜尋訂單編號、客戶、業務…" autocomplete="off">
+        </label>
+        <div class="chips" id="status-chips" role="group" aria-label="依狀態篩選"></div>
+        <div class="sortrow">
+          <label for="sort">排序</label>
+          <select id="sort">
+            <option value="date-desc">下單日（新→舊）</option>
+            <option value="date-asc">下單日（舊→新）</option>
+            <option value="amount-desc">金額（高→低）</option>
+            <option value="amount-asc">金額（低→高）</option>
+          </select>
+        </div>
+      </div>
+      <div class="col__body" id="master-body"></div>
+    </section>
+
+    <div class="sep" data-sep="begin-mid" role="separator" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-label="調整第一、二欄寬度" tabindex="0"></div>
+
+    <!-- 第二欄：Detail Column (Object Page) -->
+    <section class="col" id="col-mid" data-col="mid" aria-label="訂單詳情">
+      <header class="col__bar">
+        <button type="button" class="icon-btn back-btn" data-action="back" data-target="mid" aria-label="返回清單">‹</button>
+        <div class="col__heading">
+          <h2 class="col__title" id="mid-title">訂單詳情</h2>
+          <span class="col__sub" id="mid-sub"></span>
+        </div>
+        <div class="col__actions">
+          <button type="button" class="icon-btn" data-action="fullscreen" data-target="mid" aria-label="全螢幕">⤢</button>
+          <button type="button" class="icon-btn" data-action="close" data-target="mid" aria-label="關閉">✕</button>
+        </div>
+      </header>
+      <div class="col__body" id="mid-body"></div>
+    </section>
+
+    <div class="sep" data-sep="mid-end" role="separator" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-label="調整第二、三欄寬度" tabindex="0"></div>
+
+    <!-- 第三欄：Detail-Detail Column -->
+    <section class="col" id="col-end" data-col="end" aria-label="商品明細編輯">
+      <header class="col__bar">
+        <button type="button" class="icon-btn back-btn" data-action="back" data-target="end" aria-label="返回訂單">‹</button>
+        <div class="col__heading">
+          <h2 class="col__title" id="end-title">商品明細</h2>
+          <span class="col__sub" id="end-sub"></span>
+        </div>
+        <div class="col__actions">
+          <button type="button" class="icon-btn" data-action="fullscreen" data-target="end" aria-label="全螢幕">⤢</button>
+          <button type="button" class="icon-btn" data-action="close" data-target="end" aria-label="關閉">✕</button>
+        </div>
+      </header>
+      <div class="col__body" id="end-body"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
