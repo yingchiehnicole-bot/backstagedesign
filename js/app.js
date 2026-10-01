@@ -101,18 +101,57 @@
     return h;
   }
 
-  function confirmDiscard() {
-    return !state.dirty || window.confirm('明細有尚未儲存的變更，確定要離開嗎？');
+  // 頁面內的確認對話框（不依賴 window.confirm，嵌入式環境也能使用）
+  function askDiscard() {
+    const dlg = $('#confirm');
+    const prevFocus = document.activeElement;
+    dlg.hidden = false;
+    $('[data-confirm="stay"]', dlg).focus();
+    return new Promise((resolve) => {
+      const done = (ok) => {
+        dlg.hidden = true;
+        dlg.removeEventListener('click', onClick);
+        dlg.removeEventListener('keydown', onKey);
+        if (!ok && prevFocus) prevFocus.focus({ preventScroll: true });
+        resolve(ok);
+      };
+      const onClick = (e) => {
+        const b = e.target.closest('[data-confirm]');
+        if (b) done(b.dataset.confirm === 'leave');
+        else if (e.target === dlg) done(false);
+      };
+      const onKey = (e) => {
+        if (e.key === 'Escape') { e.stopPropagation(); done(false); }
+        if (e.key === 'Tab') {
+          // 焦點留在對話框內
+          const btns = $$('[data-confirm]', dlg);
+          const i = btns.indexOf(document.activeElement);
+          e.preventDefault();
+          btns[(i + (e.shiftKey ? -1 : 1) + btns.length) % btns.length].focus();
+        }
+      };
+      dlg.addEventListener('click', onClick);
+      dlg.addEventListener('keydown', onKey);
+    });
+  }
+
+  function go(target) {
+    const h = buildHash(target);
+    if (h !== location.hash) location.hash = h;
   }
 
   function navigate(next) {
     const target = { orderId: state.orderId, itemId: state.itemId, fs: state.fs, ...next };
     const leavingItem = target.orderId !== state.orderId || target.itemId !== state.itemId;
-    if (leavingItem && !confirmDiscard()) return;
-    if (leavingItem) state.dirty = false;
-    const h = buildHash(target);
-    if (h === location.hash) return;
-    location.hash = h;
+    if (leavingItem && state.dirty) {
+      askDiscard().then((ok) => {
+        if (!ok) return;
+        state.dirty = false;
+        go(target);
+      });
+      return;
+    }
+    go(target);
   }
 
   let suppressHash = false;
@@ -121,13 +160,15 @@
     const next = parseHash();
     const leavingItem = next.orderId !== state.orderId || next.itemId !== state.itemId;
     if (leavingItem && state.dirty) {
-      // 例如按下瀏覽器上一頁：仍需保護未儲存的編輯
-      if (!confirmDiscard()) {
-        suppressHash = true;
-        location.hash = buildHash(state);
-        return;
-      }
-      state.dirty = false;
+      // 例如按下瀏覽器上一頁：先退回原畫面，確認後再離開，保護未儲存的編輯
+      suppressHash = true;
+      location.hash = buildHash(state);
+      askDiscard().then((ok) => {
+        if (!ok) return;
+        state.dirty = false;
+        go(next);
+      });
+      return;
     }
     const opened = levelOf(next) > levelOf(state);
     Object.assign(state, next);
@@ -713,7 +754,7 @@
       if (rows[i]) rows[i].focus();
       return;
     }
-    if (e.key === 'Escape' && !t.matches('input, textarea, select')) {
+    if (e.key === 'Escape' && !t.matches('input, textarea, select') && $('#confirm').hidden) {
       if (state.fs) navigate({ fs: null });
       else if (state.itemId) closeColumn('end');
       else if (state.orderId) closeColumn('mid');

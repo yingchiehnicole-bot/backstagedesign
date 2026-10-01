@@ -100,6 +100,17 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <div class="confirm" id="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-desc" hidden>
+    <div class="confirm__box">
+      <h2 class="confirm__title" id="confirm-title">要放棄未儲存的變更嗎？</h2>
+      <p class="confirm__desc" id="confirm-desc">這個商品明細有修改還沒儲存，離開後修改內容會消失。</p>
+      <div class="confirm__actions">
+        <button type="button" class="btn btn--ghost" data-confirm="stay">繼續編輯</button>
+        <button type="button" class="btn btn--danger" data-confirm="leave">放棄變更</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>
 </body>
