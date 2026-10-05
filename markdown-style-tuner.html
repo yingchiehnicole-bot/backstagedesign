@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown 樣式調校工具</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --line:#e5e7eb; --ink:#1f2937; --mute:#6b7280;
+  --brand:#2563eb; --dirty:#f97316; --topbar:48px; --panel-w:340px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  display:grid; grid-template-rows:var(--topbar) minmax(0,1fr); grid-template-columns:var(--panel-w) minmax(0,1fr);
+  font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC",sans-serif;
+  color:var(--ink); background:var(--bg);
+}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+
+/* ---------- 頂列 ---------- */
+.topbar{
+  grid-column:1 / -1; display:flex; align-items:center; gap:12px; padding:0 14px;
+  background:var(--panel); border-bottom:1px solid var(--line); z-index:2; min-width:0;
+}
+.topbar .grow{flex:1}
+.title{font-weight:600;white-space:nowrap}
+.btn{
+  height:30px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:#fff; white-space:nowrap;
+}
+.btn:hover{background:#f3f4f6}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:#1d4ed8}
+.width-ctl{display:flex;align-items:center;gap:8px;color:var(--mute);white-space:nowrap}
+.width-ctl input[type=range]{width:140px}
+.width-ctl output{min-width:42px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.search{display:flex;align-items:center;gap:6px}
+.search input{height:30px;width:200px;padding:0 8px;border:1px solid var(--line);border-radius:6px}
+.search small{color:var(--mute);min-width:36px;font-variant-numeric:tabular-nums}
+
+/* ---------- 參數面板 ---------- */
+.panel{overflow:auto;background:var(--panel);border-right:1px solid var(--line)}
+.grp{border-bottom:1px solid var(--line)}
+.grp > summary{
+  list-style:none; display:flex; align-items:center; gap:8px; padding:10px 14px; cursor:pointer;
+  position:sticky; top:0; background:var(--panel); z-index:1; user-select:none;
+}
+.grp > summary::-webkit-details-marker{display:none}
+.grp > summary::before{content:"▸";color:var(--mute);font-size:11px;width:10px;transition:transform .15s}
+.grp[open] > summary::before{transform:rotate(90deg)}
+.grp .gname{font-weight:600}
+.grp .gtag{font:11px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--mute)}
+.grp .gspace{flex:1}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--dirty);display:none;flex:none}
+.grp.dirty > summary .dot{display:inline-block}
+.greset{display:none;color:var(--brand);font-size:12px;text-decoration:none}
+.grp.dirty .greset{display:inline}
+.greset:hover{text-decoration:underline}
+.fields{padding:2px 14px 12px;display:grid;gap:8px}
+.field{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:10px;min-height:26px}
+.field > label{
+  color:var(--mute); cursor:default; user-select:none; display:flex; align-items:center; gap:5px;
+}
+.field.dirty > label{font-weight:700;color:var(--ink)}
+.field.dirty > label::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--dirty);flex:none}
+.ctl{display:flex;align-items:center;gap:8px;min-width:0}
+.ctl input[type=range]{flex:1;min-width:0}
+.num{width:58px;height:26px;padding:0 4px 0 6px;border:1px solid var(--line);border-radius:5px;text-align:right}
+.unit{color:var(--mute);font-size:11px;width:14px}
+.ctl input[type=color]{width:30px;height:26px;padding:1px;border:1px solid var(--line);border-radius:5px;background:#fff;flex:none}
+.hex{width:92px;height:26px;padding:0 6px;border:1px solid var(--line);border-radius:5px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.hex.bad{border-color:#dc2626;background:#fef2f2}
+select{height:26px;border:1px solid var(--line);border-radius:5px;padding:0 4px;background:#fff;max-width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{height:24px;padding:0 9px;border:0;border-right:1px solid var(--line);background:#fff;font-size:12px}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+
+/* ---------- 預覽舞台 ---------- */
+.stage{
+  min-width:0; min-height:0; overflow:auto; padding:28px; display:flex; justify-content:center; align-items:stretch;
+  background-color:#eceef1;
+  background-image:
+    linear-gradient(45deg,#e1e4e8 25%,transparent 25%,transparent 75%,#e1e4e8 75%),
+    linear-gradient(45deg,#e1e4e8 25%,transparent 25%,transparent 75%,#e1e4e8 75%);
+  background-size:20px 20px; background-position:0 0,10px 10px;
+}
+.drawer{
+  width:var(--drawer-w,420px); flex:none; background:#fff; display:flex; flex-direction:column; min-height:0;
+  border-radius:10px; box-shadow:0 10px 30px rgba(15,23,42,.14),0 1px 3px rgba(15,23,42,.1); overflow:hidden;
+}
+.drawer__head{padding:14px 20px 12px;border-bottom:1px solid #eef0f3;flex:none}
+.eyebrow{font-size:11px;letter-spacing:.08em;color:#9ca3af;text-transform:uppercase}
+.drawer__title{margin:2px 0 0;font-size:16px;font-weight:600;color:#111827}
+.drawer__body{flex:1;min-height:0;overflow:auto;padding:16px 0 28px}
+
+/* ---------- 匯出對話框 ---------- */
+dialog{width:min(720px,92vw);border:1px solid var(--line);border-radius:10px;padding:0;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(15,23,42,.4)}
+dialog header,dialog footer{display:flex;align-items:center;gap:8px;padding:12px 16px}
+dialog header{border-bottom:1px solid var(--line);font-weight:600}
+dialog footer{border-top:1px solid var(--line);justify-content:flex-end}
+dialog textarea{display:block;width:100%;height:50vh;border:0;padding:12px 16px;resize:none;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;outline:0}
+</style>
+<!-- 預覽樣式由 genCSS() 產生並寫入此處 -->
+<style id="spec-style"></style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="btn" id="btn-hl" type="button" title="示範：對預覽中的埋點區塊做高亮並淡出">預覽埋點高亮</button>
+  <div class="search">
+    <input id="q" type="search" placeholder="搜尋預覽…（Enter 下一筆）" aria-label="搜尋預覽">
+    <small id="q-count"></small>
+  </div>
+  <span class="grow"></span>
+  <label class="width-ctl">預覽寬度
+    <input id="w" type="range" min="320" max="600" step="10" value="420">
+    <output id="w-out">420px</output>
+  </label>
+  <button class="btn" id="btn-reset" type="button">全部重設</button>
+  <button class="btn primary" id="btn-export" type="button">匯出</button>
+</header>
+
+<aside class="panel" id="panel" aria-label="參數面板"></aside>
+
+<main class="stage">
+  <section class="drawer" aria-label="預覽抽屜">
+    <div class="drawer__head">
+      <div class="eyebrow">Preview · 預覽</div>
+      <h2 class="drawer__title">功能說明文件</h2>
+    </div>
+    <div class="drawer__body" id="body">
+      <div class="spec-md" id="md"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <header>匯出<span style="flex:1"></span><span id="dlg-msg" style="font-weight:400;color:var(--mute)"></span></header>
+  <textarea id="dlg-text" readonly spellcheck="false"></textarea>
+  <footer>
+    <button class="btn" id="dlg-json" type="button">複製參數 JSON</button>
+    <button class="btn" id="dlg-dl" type="button">下載 .css</button>
+    <button class="btn primary" id="dlg-css" type="button">複製 CSS</button>
+    <button class="btn" id="dlg-close" type="button">關閉</button>
+  </footer>
+</dialog>
+
+<script type="text/markdown" id="sample">
+# 結帳流程改版說明
+
+> [!NOTE]
+> 本文件描述 **v2.3** 的結帳流程，供設計與工程對齊；細節以 [設計稿](https://example.com) 為準。
+
+## 1. 背景與目標
+
+使用者在付款步驟的流失率偏高。本次改版目標是把 *步驟數* 從 5 降到 3，並讓錯誤訊息出現在欄位旁邊。次要資訊像是 ~~舊版文案~~ 會被移除。
+
+### 1.1 成功指標
+
+- 付款完成率提升 **8%**
+  - 行動版優先
+  - 桌面版次之
+- 表單錯誤率下降
+- 客服詢問量下降
+
+#### 1.1.1 量測方式
+
+1. 事件埋點：`checkout_start`
+2. 事件埋點：`checkout_paid`
+3. 每週比對漏斗
+
+##### 注意事項（H5）
+
+行內程式碼如 `order.total` 與 `formatPrice(n)` 會使用等寬字體。
+
+###### 備註（H6）
+
+最小層級的標題，通常用於附註。
+
+## 2. 介面規格
+
+| 元件 | 狀態 | 說明 |
+| --- | :---: | --- |
+| 地址欄 | 預設 | 自動帶入上次地址 |
+| 付款方式 | 展開 | 信用卡、轉帳、貨到付款 |
+| 優惠碼 | 收合 | 點擊後展開輸入框 |
+| 送出按鈕 | 禁用 | 必填欄位完成前不可點 |
+
+> [!WARN]
+> 付款失敗時 **不可** 清空已填寫的欄位，否則會造成重複輸入。
+
+> [!TIP]
+> 可以先用 `localStorage` 暫存草稿，離開頁面再回來仍可繼續。
+
+> 一般引言：好的介面不需要說明書。
+
+## 3. 範例程式碼
+
+```js
+function total(items) {
+  return items.reduce((sum, it) => sum + it.price * it.qty, 0);
+}
+console.log(total([{ price: 120, qty: 2 }]));
+```
+
+---
+
+## 4. 連結與其他
+
+詳見 [API 文件](https://example.com/api) 與 [埋點規格](https://example.com/track)。無序清單符號會依設定改變：
+
+- 第一項
+- 第二項
+- 第三項
+
+這是文件的最後一段，用來確認底部留白與段落間距是否舒適。
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+ * SCHEMA：群組與欄位定義，參數面板由此自動產生
+ * 欄位型別：range / color / select / seg
+ * ======================================================= */
+const F = (k, label, t, def, o = {}) => ({ k, label, t, def, ...o });
+const R = (k, label, def, min, max, step, unit = 'px') => F(k, label, 'range', def, { min, max, step, unit });
+const C = (k, label, def) => F(k, label, 'color', def);
+const S = (k, label, def, opts) => F(k, label, 'select', def, { opts });
+const G = (k, label, def, opts) => F(k, label, 'seg', def, { opts });
+
+const FONTS = {
+  sys:   '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif',
+  msjh:  '"Microsoft JhengHei","微軟正黑體","PingFang TC","Noto Sans TC",sans-serif',
+  noto:  '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif',
+  serif: '"Noto Serif TC","Songti TC","PMingLiU",Georgia,serif',
+};
+const MONOS = {
+  sys:      'ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace',
+  consolas: 'Consolas,"Courier New",monospace',
+  courier:  '"Courier New",Courier,monospace',
+};
+
+const HD = {
+  size:   [28, 24, 20, 17, 15, 14],
+  weight: ['700', '700', '600', '600', '600', '600'],
+  color:  ['#111827', '#111827', '#111827', '#1f2937', '#1f2937', '#6b7280'],
+  lh:     [1.3, 1.35, 1.4, 1.45, 1.5, 1.5],
+  mt:     [0, 28, 22, 18, 16, 16],
+  mb:     [12, 10, 8, 6, 6, 6],
+  rule:   ['bottom', 'none', 'none', 'none', 'none', 'none'],
+};
+const headingGroup = (n) => {
+  const i = n - 1, p = 'h' + n + '_';
+  return {
+    id: 'h' + n, name: 'H' + n, tag: '<h' + n + '>', open: false,
+    fields: [
+      R(p + 'size', '字級', HD.size[i], 10, 48, 1),
+      G(p + 'weight', '字重', HD.weight[i], [['400', '400'], ['500', '500'], ['600', '600'], ['700', '700']]),
+      C(p + 'color', '顏色', HD.color[i]),
+      R(p + 'lh', '行高', HD.lh[i], 1, 2.2, 0.05, ''),
+      R(p + 'mt', '上間距', HD.mt[i], 0, 64, 1),
+      R(p + 'mb', '下間距', HD.mb[i], 0, 48, 1),
+      G(p + 'rule', '分割線', HD.rule[i], [['none', '無'], ['top', '上'], ['bottom', '下']]),
+      G(p + 'bar', '左側色條', 'off', [['off', '關'], ['on', '開']]),
+    ],
+  };
+};
+
+const SCHEMA = {
+  groups: [
+    { id: 'base', name: '全域 / 內文', tag: '.spec-md', open: true, fields: [
+      S('font', '字體', 'sys', [['sys', '系統預設'], ['msjh', '微軟正黑優先'], ['noto', 'Noto Sans TC'], ['serif', '襯線']]),
+      R('size', '字級', 15, 12, 20, 1),
+      R('lh', '行高', 1.7, 1.2, 2.2, 0.05, ''),
+      C('color', '文字色', '#1f2937'),
+      C('muted', '次要色', '#6b7280'),
+      R('padX', '左右內距', 20, 0, 48, 1),
+      R('paraGap', '段落間距', 14, 0, 32, 1),
+      C('rule', '分割線色', '#e5e7eb'),
+      C('accent', '強調色', '#2563eb'),
+    ] },
+    { id: 'h1', ...headingGroup(1) , open: true },
+    { id: 'h2', ...headingGroup(2) , open: true },
+    headingGroup(3), headingGroup(4), headingGroup(5), headingGroup(6),
+    { id: 'icode', name: '行內程式碼', tag: ':not(pre) > code', open: false, fields: [
+      S('ic_font', '等寬字體', 'sys', [['sys', '系統等寬'], ['consolas', 'Consolas'], ['courier', 'Courier New']]),
+      R('ic_size', '字級', 13, 10, 20, 1),
+      C('ic_color', '文字色', '#c2255c'),
+      C('ic_bg', '背景', '#f3f4f6'),
+      R('ic_padX', '左右內距', 5, 0, 16, 1),
+      R('ic_radius', '圓角', 4, 0, 12, 1),
+      G('ic_border', '外框', 'off', [['off', '無'], ['on', '有']]),
+    ] },
+    { id: 'pre', name: '程式碼區塊', tag: 'pre > code', open: false, fields: [
+      R('pre_size', '字級', 13, 10, 20, 1),
+      C('pre_color', '文字色', '#e5e7eb'),
+      C('pre_bg', '背景', '#1f2937'),
+      C('pre_border', '外框色', '#111827'),
+      R('pre_pad', '內距', 14, 4, 32, 1),
+      R('pre_radius', '圓角', 8, 0, 20, 1),
+    ] },
+    { id: 'list', name: '清單', tag: 'ul / ol / li', open: false, fields: [
+      R('li_indent', '縮排', 22, 12, 48, 1),
+      R('li_gap', '項目間距', 4, 0, 16, 1),
+      C('li_marker', '符號色', '#6b7280'),
+      G('li_bullet', '無序符號', '●', [['●', '●'], ['○', '○'], ['■', '■'], ['–', '–']]),
+    ] },
+    { id: 'table', name: '表格', tag: 'table', open: false, fields: [
+      R('tb_size', '字級', 13, 10, 18, 1),
+      C('tb_border', '框線色', '#e5e7eb'),
+      C('tb_headBg', '表頭背景', '#f3f4f6'),
+      C('tb_headColor', '表頭文字', '#111827'),
+      R('tb_padY', '上下內距', 8, 2, 20, 1),
+      R('tb_padX', '左右內距', 12, 4, 28, 1),
+      G('tb_lines', '框線', 'all', [['all', '全框'], ['rows', '橫線'], ['none', '無']]),
+      G('tb_zebra', '斑馬紋', 'off', [['off', '關'], ['on', '開']]),
+    ] },
+    { id: 'quote', name: '引言 / 提示', tag: 'blockquote', open: false, fields: [
+      R('bq_bar', '色條寬', 3, 0, 8, 1),
+      C('bq_barColor', '一般色條', '#9ca3af'),
+      C('bq_bg', '一般背景', '#f9fafb'),
+      C('bq_color', '文字色', '#4b5563'),
+      C('bq_warnBar', '注意色條', '#f59f00'),
+      C('bq_warnBg', '注意背景', '#fff8e1'),
+      C('bq_tipBg', '提示背景', '#e7f5ee'),
+      R('bq_pad', '內距', 12, 4, 28, 1),
+      R('bq_radius', '圓角', 6, 0, 16, 1),
+    ] },
+    { id: 'link', name: '連結 / 分隔線', tag: 'a / hr', open: false, fields: [
+      C('a_color', '連結色', '#2563eb'),
+      G('a_underline', '底線', 'hover', [['hover', 'hover'], ['always', '常駐'], ['none', '無']]),
+      R('hr_gap', 'hr 間距', 24, 0, 64, 1),
+    ] },
+    { id: 'hl', name: '埋點高亮 / 搜尋', tag: '.is-hl / mark', open: false, fields: [
+      C('hl_bg', '高亮背景', '#fff3bf'),
+      C('hl_bar', '高亮色條', '#f59f00'),
+      C('sm_bg', '搜尋標記', '#ffe066'),
+      C('sm_cur', '目前那一筆', '#ff922b'),
+      R('hl_fade', '淡出時間', 1.6, 0.2, 5, 0.1, '秒'),
+    ] },
+  ],
+};
+// 讓 h1/h2 群組展開 + 前三組預設展開（全域、H1、H2）
+SCHEMA.groups.forEach((g, i) => { g.open = i < 3; });
+
+const ALL = SCHEMA.groups.flatMap(g => g.fields);
+const DEFAULTS = Object.fromEntries(ALL.map(f => [f.k, f.def]));
+const FIELD = Object.fromEntries(ALL.map(f => [f.k, f]));
+const DEF_WIDTH = 420;
+
+/* =========================================================
+ * genCSS：依目前參數組出完整 CSS，全部以 .spec-md 為根
+ * ======================================================= */
+function genCSS(v) {
+  const R_ = '.spec-md';
+  let css = '';
+  const add = (s) => { css += s + '\n'; };
+
+  add(`${R_}{font-family:${FONTS[v.font]};font-size:${v.size}px;line-height:${v.lh};color:${v.color};padding:0 ${v.padX}px;word-wrap:break-word;overflow-wrap:anywhere}`);
+  add(`${R_} p{margin:0 0 ${v.paraGap}px}`);
+  add(`${R_} strong,${R_} b{font-weight:700;color:${v.accent}}`);
+  add(`${R_} em{font-style:italic}`);
+  add(`${R_} del,${R_} small{color:${v.muted}}`);
+  add(`${R_} img{max-width:100%;height:auto}`);
+
+  for (let n = 1; n <= 6; n++) {
+    const p = `h${n}_`;
+    let rule = '', pad = '';
+    if (v[p + 'rule'] === 'top')    { rule += `border-top:1px solid ${v.rule};`;    pad += 'padding-top:10px;'; }
+    if (v[p + 'rule'] === 'bottom') { rule += `border-bottom:1px solid ${v.rule};`; pad += 'padding-bottom:8px;'; }
+    const bar = v[p + 'bar'] === 'on' ? `border-left:4px solid ${v.accent};padding-left:10px;` : '';
+    add(`${R_} h${n}{font-size:${v[p + 'size']}px;font-weight:${v[p + 'weight']};color:${v[p + 'color']};line-height:${v[p + 'lh']};margin:${v[p + 'mt']}px 0 ${v[p + 'mb']}px;${rule}${pad}${bar}}`);
+    add(`${R_} h${n}:first-child{margin-top:0}`);
+  }
+
+  // 行內程式碼
+  add(`${R_} :not(pre) > code{font-family:${MONOS[v.ic_font]};font-size:${v.ic_size}px;color:${v.ic_color};background:${v.ic_bg};padding:.1em ${v.ic_padX}px;border-radius:${v.ic_radius}px;border:1px solid ${v.ic_border === 'on' ? v.rule : 'transparent'}}`);
+
+  // 程式碼區塊
+  add(`${R_} pre{margin:0 0 ${v.paraGap}px;padding:${v.pre_pad}px;background:${v.pre_bg};border:1px solid ${v.pre_border};border-radius:${v.pre_radius}px;overflow:auto}`);
+  add(`${R_} pre code{font-family:${MONOS[v.ic_font]};font-size:${v.pre_size}px;line-height:1.55;color:${v.pre_color};background:none;padding:0;border:0;border-radius:0;white-space:pre}`);
+
+  // 清單
+  add(`${R_} ul,${R_} ol{margin:0 0 ${v.paraGap}px;padding-left:${v.li_indent}px}`);
+  add(`${R_} li{margin:${v.li_gap}px 0}`);
+  add(`${R_} li > ul,${R_} li > ol{margin:${v.li_gap}px 0 0}`);
+  add(`${R_} ol > li::marker{color:${v.li_marker}}`);
+  add(`${R_} ul{list-style:none}`);
+  add(`${R_} ul > li{position:relative}`);
+  add(`${R_} ul > li::before{content:"${v.li_bullet}";position:absolute;left:-${v.li_indent}px;top:0;width:${v.li_indent}px;height:${(v.size * v.lh).toFixed(2)}px;display:flex;align-items:center;justify-content:center;color:${v.li_marker};font-size:${v.li_bullet === '–' ? '1em' : '.6em'};line-height:1}`);
+
+  // 表格
+  const cell = v.tb_lines === 'all' ? `border:1px solid ${v.tb_border};`
+             : v.tb_lines === 'rows' ? `border:0;border-bottom:1px solid ${v.tb_border};` : 'border:0;';
+  add(`${R_} table{border-collapse:collapse;width:100%;margin:0 0 ${v.paraGap}px;font-size:${v.tb_size}px;display:table}`);
+  add(`${R_} th,${R_} td{${cell}padding:${v.tb_padY}px ${v.tb_padX}px;text-align:left;vertical-align:top}`);
+  add(`${R_} th{background:${v.tb_headBg};color:${v.tb_headColor};font-weight:600}`);
+  if (v.tb_zebra === 'on') add(`${R_} tbody tr:nth-child(even) td{background:rgba(0,0,0,.03)}`);
+
+  // 引言 / 提示
+  add(`${R_} blockquote{margin:0 0 ${v.paraGap}px;padding:${v.bq_pad}px ${v.bq_pad + 2}px;color:${v.bq_color};background:${v.bq_bg};border-left:${v.bq_bar}px solid ${v.bq_barColor};border-radius:${v.bq_radius}px}`);
+  add(`${R_} blockquote > :last-child{margin-bottom:0}`);
+  add(`${R_} blockquote > :first-child{margin-top:0}`);
+  add(`${R_} blockquote.is-warn{background:${v.bq_warnBg};border-left-color:${v.bq_warnBar}}`);
+  add(`${R_} blockquote.is-tip{background:${v.bq_tipBg};border-left-color:#2f9e6e}`);
+
+  // 連結 / hr
+  const ul = { hover: ['none', 'underline'], always: ['underline', 'underline'], none: ['none', 'none'] }[v.a_underline];
+  add(`${R_} a{color:${v.a_color};text-decoration:${ul[0]};text-underline-offset:3px}`);
+  add(`${R_} a:hover{text-decoration:${ul[1]}}`);
+  add(`${R_} hr{border:0;border-top:1px solid ${v.rule};margin:${v.hr_gap}px 0}`);
+
+  // 埋點高亮 / 搜尋
+  add(`${R_} [data-anchor]{transition:background-color ${v.hl_fade}s ease-out,box-shadow ${v.hl_fade}s ease-out}`);
+  add(`${R_} [data-anchor].is-hl{background-color:${v.hl_bg};box-shadow:-4px 0 0 ${v.hl_bar};transition:none}`);
+  add(`${R_} mark.sm{background:${v.sm_bg};color:inherit;border-radius:2px}`);
+  add(`${R_} mark.sm.cur{background:${v.sm_cur};color:#fff}`);
+  return css;
+}
+
+/* =========================================================
+ * 狀態與儲存（localStorage 以 try/catch 包起來）
+ * ======================================================= */
+const STORE_KEY = 'spec-md-tuner:v1';
+const values = { ...DEFAULTS };
+let width = DEF_WIDTH;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    Object.keys(s.values || {}).forEach(k => { if (k in DEFAULTS) values[k] = s.values[k]; });
+    if (Number.isFinite(s.width)) width = Math.min(600, Math.max(320, s.width));
+  } catch (e) { /* 忽略：隱私模式或資料損毀 */ }
+}
+function save() {
+  try {
+    const diff = {};
+    for (const k in values) if (values[k] !== DEFAULTS[k]) diff[k] = values[k];
+    localStorage.setItem(STORE_KEY, JSON.stringify({ values: diff, width }));
+  } catch (e) { /* 忽略 */ }
+}
+
+/* =========================================================
+ * 面板產生
+ * ======================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const panel = $('#panel');
+const styleEl = $('#spec-style');
+const refs = {};   // k -> { row, set(value) }
+const grpRefs = []; // { el, fields }
+
+const isHex = (s) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s);
+const expandHex = (s) => (s.length === 4 ? '#' + [...s.slice(1)].map(c => c + c).join('') : s).toLowerCase();
+const el = (tag, props = {}, ...kids) => {
+  const e = Object.assign(document.createElement(tag), props);
+  kids.forEach(k => e.append(k));
+  return e;
+};
+
+function buildField(f) {
+  const row = el('div', { className: 'field' });
+  const label = el('label', { textContent: f.label, title: '雙擊還原預設值' });
+  label.addEventListener('dblclick', () => setValue(f.k, f.def));
+  const ctl = el('div', { className: 'ctl' });
+  let set;
+
+  if (f.t === 'range') {
+    const rng = el('input', { type: 'range', min: f.min, max: f.max, step: f.step });
+    const num = el('input', { type: 'number', className: 'num', min: f.min, max: f.max, step: f.step });
+    rng.addEventListener('input', () => setValue(f.k, +rng.value));
+    num.addEventListener('change', () => {
+      const n = parseFloat(num.value);
+      setValue(f.k, Number.isFinite(n) ? Math.min(f.max, Math.max(f.min, n)) : f.def);
+    });
+    ctl.append(rng, num, el('span', { className: 'unit', textContent: f.unit }));
+    set = (val) => { rng.value = val; num.value = val; };
+  } else if (f.t === 'color') {
+    const pick = el('input', { type: 'color' });
+    const hex = el('input', { type: 'text', className: 'hex', maxLength: 7, spellcheck: false });
+    pick.addEventListener('input', () => setValue(f.k, pick.value));
+    hex.addEventListener('input', () => {
+      let s = hex.value.trim();
+      if (s && s[0] !== '#') s = '#' + s;
+      const ok = isHex(s);
+      hex.classList.toggle('bad', !ok);
+      if (ok) setValue(f.k, expandHex(s), hex);
+    });
+    hex.addEventListener('blur', () => { hex.classList.remove('bad'); hex.value = values[f.k]; });
+    ctl.append(pick, hex);
+    set = (val, from) => { pick.value = val; if (from !== hex) hex.value = val; };
+  } else if (f.t === 'select') {
+    const sel = el('select');
+    f.opts.forEach(([v, t]) => sel.append(el('option', { value: v, textContent: t })));
+    sel.addEventListener('change', () => setValue(f.k, sel.value));
+    ctl.append(sel);
+    set = (val) => { sel.value = val; };
+  } else { // seg
+    const wrap = el('div', { className: 'seg', role: 'group' });
+    const btns = f.opts.map(([v, t]) => {
+      const b = el('button', { type: 'button', textContent: t });
+      b.addEventListener('click', () => setValue(f.k, v));
+      wrap.append(b);
+      return [v, b];
+    });
+    ctl.append(wrap);
+    set = (val) => btns.forEach(([v, b]) => b.setAttribute('aria-pressed', String(v === val)));
+  }
+  row.append(label, ctl);
+  refs[f.k] = { row, set };
+  return row;
+}
+
+function buildPanel() {
+  SCHEMA.groups.forEach((g) => {
+    const reset = el('a', { className: 'greset', href: '#', textContent: '重設' });
+    reset.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      g.fields.forEach(f => values[f.k] = f.def);
+      render();
+    });
+    const sum = el('summary', {}, el('span', { className: 'gname', textContent: g.name }),
+      el('span', { className: 'gtag', textContent: g.tag }), el('span', { className: 'dot' }),
+      el('span', { className: 'gspace' }), reset);
+    const fields = el('div', { className: 'fields' }, ...g.fields.map(buildField));
+    const d = el('details', { className: 'grp', open: !!g.open }, sum, fields);
+    panel.append(d);
+    grpRefs.push({ el: d, g });
+  });
+}
+
+/* =========================================================
+ * 更新流程
+ * ======================================================= */
+function setValue(k, val, from) {
+  values[k] = val;
+  render(from, k);
+}
+
+function render(from) {
+  for (const k in refs) {
+    refs[k].set(values[k], from);
+    refs[k].row.classList.toggle('dirty', values[k] !== DEFAULTS[k]);
+  }
+  grpRefs.forEach(({ el: d, g }) => d.classList.toggle('dirty', g.fields.some(f => values[f.k] !== f.def)));
+  styleEl.textContent = genCSS(values);
+  document.documentElement.style.setProperty('--drawer-w', width + 'px');
+  $('#w').value = width;
+  $('#w-out').textContent = width + 'px';
+  save();
+}
+
+/* =========================================================
+ * Markdown 渲染與預覽輔助（埋點、提示區塊、搜尋）
+ * ======================================================= */
+const md = $('#md');
+
+function renderMarkdown() {
+  if (typeof marked === 'undefined') {
+    md.innerHTML = '<p>無法載入 marked（CDN）。請確認網路連線後重新整理。</p>';
+    return;
+  }
+  marked.setOptions({ gfm: true, breaks: false });
+  md.innerHTML = marked.parse($('#sample').textContent.trim());
+
+  // > [!WARN] / [!TIP] / [!NOTE] → blockquote.is-warn / .is-tip
+  md.querySelectorAll('blockquote').forEach((bq) => {
+    const p = bq.querySelector('p');
+    if (!p) return;
+    const m = p.innerHTML.match(/^\s*\[!(WARN|WARNING|TIP|NOTE)\]\s*(<br\s*\/?>)?\s*/i);
+    if (!m) return;
+    const kind = m[1].toUpperCase();
+    if (kind.startsWith('WARN')) bq.classList.add('is-warn');
+    if (kind === 'TIP') bq.classList.add('is-tip');
+    p.innerHTML = p.innerHTML.slice(m[0].length);
+  });
+  // 埋點：標題與第一段、表格、程式碼區塊都可被高亮
+  md.querySelectorAll('h1,h2,h3,h4,h5,h6,table,pre,blockquote').forEach((n, i) => n.setAttribute('data-anchor', 'a' + i));
+}
+
+let hlIdx = -1;
+function flashAnchor() {
+  const list = [...md.querySelectorAll('[data-anchor]')];
+  if (!list.length) return;
+  md.querySelectorAll('.is-hl').forEach(n => n.classList.remove('is-hl'));
+  hlIdx = (hlIdx + 1) % list.length;
+  const n = list[hlIdx];
+  n.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  n.classList.add('is-hl');       // 立即套上高亮（transition:none）
+  void n.offsetWidth;             // 強制 reflow
+  setTimeout(() => n.classList.remove('is-hl'), 700); // 移除後依「淡出時間」漸隱
+}
+
+/* 搜尋 */
+let marks = [], cur = -1;
+function clearMarks() {
+  md.querySelectorAll('mark.sm').forEach(m => m.replaceWith(document.createTextNode(m.textContent)));
+  md.normalize();
+  marks = []; cur = -1;
+}
+function runSearch(q) {
+  clearMarks();
+  if (q) {
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const walker = document.createTreeWalker(md, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((tn) => {
+      const text = tn.nodeValue;
+      let m, last = 0, frag = null;
+      re.lastIndex = 0;
+      while ((m = re.exec(text))) {
+        if (!m[0]) { re.lastIndex++; continue; }
+        frag = frag || document.createDocumentFragment();
+        frag.append(text.slice(last, m.index), el('mark', { className: 'sm', textContent: m[0] }));
+        last = m.index + m[0].length;
+      }
+      if (frag) { frag.append(text.slice(last)); tn.replaceWith(frag); }
+    });
+    marks = [...md.querySelectorAll('mark.sm')];
+    if (marks.length) gotoMark(0);
+  }
+  $('#q-count').textContent = q ? (marks.length ? `${cur + 1}/${marks.length}` : '無結果') : '';
+}
+function gotoMark(i) {
+  if (!marks.length) return;
+  if (cur >= 0) marks[cur].classList.remove('cur');
+  cur = (i + marks.length) % marks.length;
+  marks[cur].classList.add('cur');
+  marks[cur].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  $('#q-count').textContent = `${cur + 1}/${marks.length}`;
+}
+
+/* =========================================================
+ * 頂列與匯出
+ * ======================================================= */
+function bindTopbar() {
+  $('#w').addEventListener('input', (e) => { width = +e.target.value; render(); });
+  $('#btn-hl').addEventListener('click', flashAnchor);
+  $('#btn-reset').addEventListener('click', () => {
+    if (!confirm('要把所有參數與預覽寬度還原成預設值嗎？')) return;
+    Object.assign(values, DEFAULTS); width = DEF_WIDTH; render();
+  });
+  const q = $('#q');
+  q.addEventListener('input', () => runSearch(q.value.trim()));
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); gotoMark(cur + (e.shiftKey ? -1 : 1)); } });
+
+  const dlg = $('#dlg'), txt = $('#dlg-text'), msg = $('#dlg-msg');
+  const copy = async (text, label) => {
+    try { await navigator.clipboard.writeText(text); msg.textContent = label + '已複製'; }
+    catch (e) { txt.focus(); txt.select(); msg.textContent = '請手動複製（Ctrl/Cmd + C）'; }
+  };
+  $('#btn-export').addEventListener('click', () => {
+    txt.value = genCSS(values); msg.textContent = ''; dlg.showModal();
+  });
+  $('#dlg-css').addEventListener('click', () => { txt.value = genCSS(values); copy(txt.value, 'CSS '); });
+  $('#dlg-json').addEventListener('click', () => {
+    const json = JSON.stringify({ values, width }, null, 2);
+    txt.value = json; copy(json, 'JSON ');
+  });
+  $('#dlg-dl').addEventListener('click', () => {
+    const a = el('a', { href: URL.createObjectURL(new Blob([genCSS(values)], { type: 'text/css' })), download: 'spec-md.css' });
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+  $('#dlg-close').addEventListener('click', () => dlg.close());
+}
+
+/* ---------- 啟動 ---------- */
+load();
+buildPanel();
+renderMarkdown();
+bindTopbar();
+render();
+})();
+</script>
+</body>
+</html>
